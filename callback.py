@@ -1,0 +1,96 @@
+from .imps import *
+
+class CallBack:
+    def on_train_begin(self): pass
+    def on_batch_begin(self): pass
+    def on_batch_end(self,loss): pass
+    def on_epoch_end(self,trn_loss,vals): pass
+
+class Recorder(CallBack):
+    def __init__(self, layer_opt):
+        self.trn_los, self.trn_los_epoch, self.val_los_epoch, self.lrs = [], [], [], []
+        self.layer_opt = layer_opt
+
+    def on_batch_end(self, loss):
+        self.lrs.append(self.layer_opt.lrs[-1])
+        self.trn_los.append(loss)
+
+    def on_epoch_end(self, trn_loss, vals):
+        self.trn_los_epoch.append(trn_loss)
+        self.val_los_epoch.append(vals[0])
+
+    def plot_lr(self):
+        fig,ax = plt.subplots()
+        ax.set_ylabel("lr")
+        ax.set_xlabel("iteration")
+        ax.plot(self.lrs)
+    
+    def plot_loss(self):
+        fig,ax = plt.subplots()
+        ax.set_ylabel("loss")
+        ax.set_xlabel("epoch")
+        x_axis = range(1,1+len(self.trn_los_epoch))
+        ax.plot(x_axis,self.trn_los_epoch,label='train_loss')
+        ax.plot(x_axis,self.val_los_epoch,label='val_loss')
+        ax.legend()
+
+    def plot_lr_loss(self):
+        fig,ax = plt.subplots()
+        ax.set_ylabel("loss")
+        ax.set_xlabel("learning rate (log scale)")
+        ax.set_xscale('log')
+        skip_end = 1
+        ax.plot(self.lrs[:-skip_end], self.trn_los[:-skip_end])
+
+class Scheduler(CallBack):
+    def __init__(self, layer_opt, wds):
+        self.iteration = -1
+        self.layer_opt = layer_opt
+        self.layer_opt.set_wds(wds)
+
+    def on_batch_begin(self):
+        self.iteration += 1
+
+class LR_Finder(Scheduler):
+    def __init__(self, start_lrs, end_lr, wds, nb, layer_opt):
+        self.start_lrs = start_lrs
+        self.best = 1e9
+        self.nb = nb
+        self.lrs = np.geomspace(start_lrs[-1],end_lr,num=nb,endpoint=True)
+        super().__init__(layer_opt, wds)
+
+    def on_batch_begin(self):
+        super().on_batch_begin()
+        self.layer_opt.set_lrs(ratio_listify(self.lrs[self.iteration], self.start_lrs))
+
+    def on_batch_end(self, loss):
+        if loss < self.best:
+            self.best = loss
+        if self.iteration == self.nb-1 or loss > self.best*2:
+            return True
+        return False
+
+class CircularLR(Scheduler):
+    def __init__(self, layer_opt, peak_lrs, wds, v_ratio, h_ratio, nb, tl_v_pct, tl_h_pct):
+        self.peak_lrs = peak_lrs
+        bottom = peak_lrs[-1]/v_ratio
+        l = int(nb*(1-tl_h_pct))
+        ll = int(l/h_ratio)
+        one = np.linspace(bottom, self.peak_lrs[-1], num=ll, endpoint=False)
+        two = np.linspace(self.peak_lrs[-1], bottom, num=l-ll, endpoint=False)
+        three = np.linspace(bottom, bottom*tl_v_pct, num=nb-l, endpoint=True)
+        self.lrs = np.concatenate([one,two,three])
+        super().__init__(layer_opt, wds)
+
+    def on_batch_begin(self):
+        super().on_batch_begin()
+        self.layer_opt.set_lrs(ratio_listify(self.lrs[self.iteration], self.peak_lrs))
+
+class ConstantLR(Scheduler):
+    def __init__(self, lrs, wds, layer_opt):
+        self.lrs = lrs
+        super().__init__(layer_opt, wds)
+
+    def on_train_begin(self):
+        self.layer_opt.set_lrs(self.lrs)
+    
