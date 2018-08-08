@@ -39,24 +39,24 @@ class Recorder(CallBack):
         ax.set_ylabel("loss")
         ax.set_xlabel("learning rate (log scale)")
         ax.set_xscale('log')
-        skip_end = 1
-        ax.plot(self.lrs[:-skip_end], self.trn_los[:-skip_end])
+        ax.plot(self.lrs, self.trn_los)
 
 class Scheduler(CallBack):
     def __init__(self, layer_opt, wds):
         self.iteration = -1
         self.layer_opt = layer_opt
-        self.layer_opt.set_wds(wds)
+        if wds is not None:
+            self.layer_opt.set_wds(wds)
 
     def on_batch_begin(self):
         self.iteration += 1
 
 class LR_Finder(Scheduler):
-    def __init__(self, start_lrs, end_lr, wds, nb, layer_opt):
+    def __init__(self, start_lrs, end_lrs, wds, nb, layer_opt):
         self.start_lrs = start_lrs
         self.best = 1e9
         self.nb = nb
-        self.lrs = np.geomspace(start_lrs[-1],end_lr,num=nb,endpoint=True)
+        self.lrs = np.geomspace(start_lrs[-1],end_lrs[-1],num=nb,endpoint=True)
         super().__init__(layer_opt, wds)
 
     def on_batch_begin(self):
@@ -66,7 +66,7 @@ class LR_Finder(Scheduler):
     def on_batch_end(self, loss):
         if loss < self.best:
             self.best = loss
-        if self.iteration == self.nb-1 or loss > self.best*2:
+        if loss > 2*self.best:
             return True
         return False
 

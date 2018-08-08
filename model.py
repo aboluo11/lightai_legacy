@@ -49,27 +49,6 @@ class LinerBlock(nn.Module):
     def forward(self, x):
         return self.lin(self.drop(self.bn(x)))
 
-class Net(nn.Module):
-    def __init__(self, bptt, n_bptt, emb_szs, units, layers, num_words, wd_emb_sz, hid_sz, drops, rnn_dp,
-     bidirectional=True):
-        super().__init__()
-        bi_sz = 2 if bidirectional else 1
-        units.insert(0, sum([sz[1] for sz in emb_szs]) + 5 + 3*hid_sz*bi_sz)
-        self.rnn = MultiBatchRNN(bptt=bptt, n_bptt=n_bptt, emb_sz=wd_emb_sz, hid_sz=hid_sz, layers=layers,
-         num_words=num_words, bidirectional=bidirectional, rnn_dp=rnn_dp)
-        self.embs = nn.ModuleList([nn.Embedding(ni, no) for ni,no in emb_szs])
-        self.lins = nn.ModuleList([LinerBlock(units[i], units[i+1], drops[i]) for i in range(len(drops))])
-        
-    def forward(self, x):
-        cat, cont, text = x
-        cat = torch.cat([e(cat[:,i]) for i,e in enumerate(self.embs)], 1)
-        text = self.rnn(text)
-        x = torch.cat([cat, cont, text], 1)
-        for l in self.lins:
-            raw_x = l(x)
-            x = F.relu(raw_x)
-        return raw_x
-
 class Tabular(nn.Module):
     def __init__(self, emb_szs, units, drops, cont_sz):
         super().__init__()

@@ -1,7 +1,8 @@
 from .imps import *
 
 def T(x, cuda=True):
-    if x.dtype in (np.int8, np.int16, np.int32, np.int64):
+    x = np.ascontiguousarray(x)
+    if x.dtype in (np.uint8, np.int8, np.int16, np.int32, np.int64):
         x = torch.from_numpy(x.astype(np.int64))
     elif x.dtype in (np.float32, np.float64):
         x = torch.from_numpy(x.astype(np.float32))

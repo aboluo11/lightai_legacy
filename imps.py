@@ -14,6 +14,7 @@ from pathlib import Path
 from itertools import chain
 import collections
 import re
+import cv2
 
 import tqdm as tq
 from tqdm import tnrange
