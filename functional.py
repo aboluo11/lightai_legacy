@@ -26,3 +26,5 @@ def ratio_listify(x, y):
     x = y/ratio
     return x
     
+def child(m):
+    return list(m.children())
