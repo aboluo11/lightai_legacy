@@ -13,9 +13,7 @@ class Learner:
         self.recorder = Recorder(self.layer_opt)
         self.callbacks = [self.recorder]
 
-    def fit(self, n_epochs=1, lrs=None, wds=None, clr_params=None, callbacks=None):
-        if lrs is not None: lrs = np.array(listify(lrs, self.layer_opt.layer_groups))
-        if wds is not None: wds = np.array(listify(wds, self.layer_opt.layer_groups))
+    def fit(self, n_epochs, lrs, wds=None, clr_params=None, callbacks=None):
         if callbacks is None:
             if clr_params is not None:
                 v_ratio,h_ratio,tl_v_pct,tl_h_pct = clr_params
@@ -28,14 +26,15 @@ class Learner:
         for cb in callbacks: cb.on_train_begin()
 
         avg_mom,avg_loss,batch_num = 0.98,0,0
-        names = ["epoch", "trn_loss", "val_loss"] + [m.__name__.lower() for m in self.metrics]
+        names = ["epoch", "trn_loss"] + (["val_loss"] if self.val_dl else []) +\
+         [m.__name__.lower() for m in self.metrics]
         layout = "{:^11}" * len(names)
         for epoch in tnrange(n_epochs, desc='Epoch'):
             self.model.train()
-            num_batch = len(self.trn_dl)
-            t = tqdm(self.trn_dl, leave=False, total=num_batch, ncols=125)
+            t = tqdm(self.trn_dl, leave=False, total=len(self.trn_dl), ncols=125)
             try:
                 for (*x,y) in t:
+                    *x,y = [T(each) for each in (*x,y)]
                     for cb in callbacks: cb.on_batch_begin()
                     batch_num += 1
                     loss = self.step(y,*x)
@@ -49,12 +48,12 @@ class Learner:
             finally:
                 t.leave = True
                 t.close()
-
-            val_res = self.eval()
+            if self.val_dl: val_res = self.eval()
+            else: val_res = None
             for cb in callbacks: cb.on_epoch_end(debias_loss, val_res)
 
             if epoch == 0: print(layout.format(*names))
-            self.print_stats(epoch+1, [debias_loss] + val_res)
+            self.print_stats(epoch+1, [debias_loss] + (val_res if val_res else []))
 
     def eval(self):
         losses,bses = [],[]
@@ -62,6 +61,7 @@ class Learner:
         self.model.eval()
         with torch.no_grad():
             for (*x,y) in self.val_dl:
+                *x,y = [T(each) for each in (*x,y)]
                 y = y.view(-1)
                 predict = self.model(*x).view(-1)
                 loss = self.crit(predict, y)
@@ -87,19 +87,34 @@ class Learner:
     def lr_find(self, start_lrs=None, end_lrs=None, wds=None, n_epochs=1):
         if start_lrs is None: start_lrs = [1e-5]
         if end_lrs is None: end_lrs = [20]
-        if wds is None: wds = [0]
         self.save(self.model_path/'tmp.h5')
         recorder = Recorder(self.layer_opt)
-        start_lrs = np.array(listify(start_lrs, self.layer_opt.layer_groups))
-        end_lrs = np.array(listify(end_lrs, self.layer_opt.layer_groups))
         lr_finder = LR_Finder(
             start_lrs,end_lrs,wds,nb=n_epochs*len(self.trn_dl),layer_opt=self.layer_opt)
         self.fit(n_epochs,lrs=start_lrs,wds=wds,callbacks=[recorder,lr_finder])
         recorder.plot_lr_loss()
         self.load(self.model_path/'tmp.h5')
 
+    def freeze_to(self, right):
+        for lg in self.layer_opt.layer_groups[:right]:
+            for p in self.layer_opt.lg_params(lg):
+                p.requires_grad = False
+        for lg in self.layer_opt.layer_groups[right:]:
+            for p in self.layer_opt.lg_params(lg):
+                p.requires_grad = True
+
+    def unfreeze(self):
+        for lg in self.layer_opt.layer_groups:
+            for p in self.layer_opt.lg_params(lg):
+                p.requires_grad = True
+
     def save(self, path):
-        torch.save(self.model.state_dict(), path)
+        torch.save({
+            'state_dict': self.model.state_dict(),
+            'optimizer' : self.layer_opt.opt.state_dict(),
+        }, path)
 
     def load(self, path):
-        self.model.load_state_dict(torch.load(path))
+        checkpoint = torch.load(path)
+        self.model.load_state_dict(checkpoint['state_dict'])
+        self.layer_opt.opt.load_state_dict(checkpoint['optimizer'])

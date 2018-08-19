@@ -17,7 +17,7 @@ class Recorder(CallBack):
 
     def on_epoch_end(self, trn_loss, vals):
         self.trn_los_epoch.append(trn_loss)
-        self.val_los_epoch.append(vals[0])
+        if vals: self.val_los_epoch.append(vals[0])
 
     def plot_lr(self):
         fig,ax = plt.subplots()
@@ -39,13 +39,15 @@ class Recorder(CallBack):
         ax.set_ylabel("loss")
         ax.set_xlabel("learning rate (log scale)")
         ax.set_xscale('log')
-        ax.plot(self.lrs, self.trn_los)
+        right = -1
+        ax.plot(self.lrs[:right], self.trn_los[:right])
 
 class Scheduler(CallBack):
     def __init__(self, layer_opt, wds):
         self.iteration = -1
         self.layer_opt = layer_opt
         if wds is not None:
+            wds = np.array(listify(wds, layer_opt.layer_groups))
             self.layer_opt.set_wds(wds)
 
     def on_batch_begin(self):
@@ -53,7 +55,8 @@ class Scheduler(CallBack):
 
 class LR_Finder(Scheduler):
     def __init__(self, start_lrs, end_lrs, wds, nb, layer_opt):
-        self.start_lrs = start_lrs
+        self.start_lrs = np.array(listify(start_lrs, layer_opt.layer_groups))
+        end_lrs = np.array(listify(end_lrs, layer_opt.layer_groups))
         self.best = 1e9
         self.nb = nb
         self.lrs = np.geomspace(start_lrs[-1],end_lrs[-1],num=nb,endpoint=True)
@@ -72,8 +75,8 @@ class LR_Finder(Scheduler):
 
 class CircularLR(Scheduler):
     def __init__(self, layer_opt, peak_lrs, wds, v_ratio, h_ratio, nb, tl_v_pct, tl_h_pct):
-        self.peak_lrs = peak_lrs
-        bottom = peak_lrs[-1]/v_ratio
+        self.peak_lrs = np.array(listify(peak_lrs, layer_opt.layer_groups))
+        bottom = self.peak_lrs[-1]/v_ratio
         l = int(nb*(1-tl_h_pct))
         ll = int(l/h_ratio)
         one = np.linspace(bottom, self.peak_lrs[-1], num=ll, endpoint=False)
@@ -88,7 +91,7 @@ class CircularLR(Scheduler):
 
 class ConstantLR(Scheduler):
     def __init__(self, lrs, wds, layer_opt):
-        self.lrs = lrs
+        self.lrs = np.array(listify(lrs, layer_opt.layer_groups))
         super().__init__(layer_opt, wds)
 
     def on_train_begin(self):

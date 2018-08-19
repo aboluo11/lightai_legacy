@@ -32,9 +32,3 @@ class TextDataset:
     
     def __getitem__(self, idxs):
         return [self.text[idxs], self.y[idxs]]
-
-def split_idx(idx_len, percentage, seed):
-    np.random.seed(seed)
-    idx = np.random.permutation(idx_len)
-    train, valid = idx[:int(idx_len*percentage)], idx[int(idx_len*percentage):]
-    return train, valid

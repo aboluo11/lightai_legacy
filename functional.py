@@ -26,5 +26,14 @@ def ratio_listify(x, y):
     x = y/ratio
     return x
     
-def child(m):
+def children(m):
     return list(m.children())
+
+def model_cut(m,right):
+    return nn.Sequential(*children(m)[:right])
+
+def split_idx(idx_len, percentage, seed):
+    np.random.seed(seed)
+    idx = np.random.permutation(idx_len)
+    train, valid = idx[:int(idx_len*percentage)], idx[int(idx_len*percentage):]
+    return train, valid

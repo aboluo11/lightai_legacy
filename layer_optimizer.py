@@ -20,7 +20,16 @@ class LayerOptimizer:
         return [p for p in m.parameters() if p.requires_grad]
     
     def trainable_lg_params(self, lg):
+        """lg: layer_group, a pytorch module or list of pytorch module
+        """
         if isinstance(lg, (list, tuple)):
             return chain(*[self.trainable_params(l) for l in lg])
         return self.trainable_params(lg)
+    
+    def lg_params(self, lg):
+        """lg: layer_group, a pytorch module or list of pytorch module
+        """
+        if isinstance(lg, (list, tuple)):
+            return chain(*[m.parameters() for m in lg])
+        return lg.parameters()
     
