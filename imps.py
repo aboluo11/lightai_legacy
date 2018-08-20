@@ -16,6 +16,7 @@ import collections
 import re
 import cv2
 from shutil import copyfile
+from PIL import Image
 
 import tqdm as tq
 from tqdm import tnrange
