@@ -11,6 +11,8 @@ class DataLoader:
         elem_type = type(batch[0])
         if elem_type.__module__ == 'numpy':
             batch = np.stack(batch)
+        elif isinstance(batch[0], str):
+            return batch
         elif isinstance(batch[0], collections.Sequence):
             batch = [self.collate(b) for b in zip(*batch)]
         return batch

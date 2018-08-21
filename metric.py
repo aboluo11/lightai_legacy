@@ -5,7 +5,7 @@ class RMSE:
         self.mses = []
 
     def __call__(self, predict, y):
-        self.mses.append(F.mse_loss(predict, y).item())
+        self.mses.append(F.mse_loss(predict, y, reduction=None))
     
-    def res(self, bses):
-        return np.sqrt(np.average(self.mses, weights=bses))
+    def res(self):
+        return torch.sqrt(torch.cat(self.mses).mean()).item()

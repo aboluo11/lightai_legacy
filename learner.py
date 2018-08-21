@@ -3,15 +3,15 @@ from .callback import *
 from .layer_optimizer import *
 
 class Learner:
-    def __init__(self, trn_dl, val_dl, model, crit, metrics=None, opt_fn=torch.optim.Adam, path='./model'):
-        self.trn_dl,self.val_dl,self.model,self.crit = trn_dl,val_dl,model,crit
-        self.metrics = [] if metrics is None else metrics
+    def __init__(self, trn_dl, val_dl, model, crit, metric=None, small_better=True,
+     opt_fn=torch.optim.Adam, path='./model'):
+        self.trn_dl,self.val_dl,self.model,self.crit,self.metric = trn_dl,val_dl,model,crit,metric
         self.model_path = Path(path)
         self.model_path.mkdir(exist_ok=True)
         layer_groups = model.get_layer_groups() if hasattr(model, 'get_layer_groups') else [model]
         self.layer_opt = LayerOptimizer(layer_groups, opt_fn)
         self.recorder = Recorder(self.layer_opt)
-        self.callbacks = [self.recorder]
+        self.callbacks = [self.recorder, SaveBestModel(self, small_better)]
 
     def fit(self, n_epochs, lrs, wds=None, clr_params=None, callbacks=None):
         if callbacks is None:
@@ -27,7 +27,7 @@ class Learner:
 
         avg_mom,avg_loss,batch_num = 0.98,0,0
         names = ["epoch", "trn_loss"] + (["val_loss"] if self.val_dl else []) +\
-         [m.__name__.lower() for m in self.metrics]
+         ([self.metric.__name__.lower()] if self.metric else [])
         layout = "{:^11}" * len(names)
         for epoch in tnrange(n_epochs, desc='Epoch'):
             self.model.train()
@@ -57,7 +57,7 @@ class Learner:
 
     def eval(self):
         losses,bses = [],[]
-        metrics = [m() for m in self.metrics]
+        metric = self.metric() if self.metric else None
         self.model.eval()
         with torch.no_grad():
             for (*x,y) in self.val_dl:
@@ -67,9 +67,11 @@ class Learner:
                 loss = self.crit(predict, y)
                 losses.append(loss.item())
                 bses.append(len(y))
-                for m in metrics:
-                    m(predict, y)
-        return [np.average(losses,weights=bses)] + [m.res(bses) for m in metrics]
+                if metric:
+                    metric(predict, y)
+        loss = np.average(losses,weights=bses)
+        if metric: return [loss,metric.res()]
+        else: return [loss]
 
     def step(self, y, *x):
         predict = self.model(*x).view(-1)
