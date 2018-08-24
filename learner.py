@@ -3,13 +3,11 @@ from .callback import *
 from .layer_optimizer import *
 
 class Learner:
-    def __init__(self, trn_dl, val_dl, model, crit, metric=None, small_better=True,
-     opt_fn=torch.optim.Adam, path='./model'):
+    def __init__(self, trn_dl, val_dl, model, crit,layer_opt, metric=None, small_better=True,path='./model'):
         self.trn_dl,self.val_dl,self.model,self.crit,self.metric = trn_dl,val_dl,model,crit,metric
         self.model_path = Path(path)
         self.model_path.mkdir(exist_ok=True)
-        layer_groups = model.get_layer_groups() if hasattr(model, 'get_layer_groups') else [model]
-        self.layer_opt = LayerOptimizer(layer_groups, opt_fn)
+        self.layer_opt = layer_opt
         self.recorder = Recorder(self.layer_opt)
         self.callbacks = [self.recorder, SaveBestModel(self, small_better)]
 
@@ -30,7 +28,7 @@ class Learner:
          ([self.metric.__name__.lower()] if self.metric else [])
         layout = "{:^11}" * len(names)
         for epoch in tnrange(n_epochs, desc='Epoch'):
-            self.model.train()
+            self.train()
             t = tqdm(self.trn_dl, leave=False, total=len(self.trn_dl), ncols=125)
             try:
                 for (*x,y) in t:
@@ -54,6 +52,7 @@ class Learner:
 
             if epoch == 0: print(layout.format(*names))
             self.print_stats(epoch+1, [debias_loss] + (val_res if val_res else []))
+        for cb in callbacks: cb.on_train_end()
 
     def eval(self):
         losses,bses = [],[]
@@ -89,24 +88,35 @@ class Learner:
     def lr_find(self, start_lrs=None, end_lrs=None, wds=None, n_epochs=1):
         if start_lrs is None: start_lrs = [1e-5]
         if end_lrs is None: end_lrs = [20]
-        self.save(self.model_path/'tmp.h5')
+        self.save(self.model_path/'tmp')
         recorder = Recorder(self.layer_opt)
         lr_finder = LR_Finder(
             start_lrs,end_lrs,wds,nb=n_epochs*len(self.trn_dl),layer_opt=self.layer_opt)
         self.fit(n_epochs,lrs=start_lrs,wds=wds,callbacks=[recorder,lr_finder])
         recorder.plot_lr_loss()
-        self.load(self.model_path/'tmp.h5')
+        self.load(self.model_path/'tmp')
 
-    def freeze_to(self, right):
+    def train(self):
+        def f(m):
+            if getattr(m, 'train_mode', True):
+                m.train()
+            else: m.eval()
+        for lg in self.layer_opt.layer_groups:
+            for m in lg: f(m)
+
+    def freeze_to(self, right, bn_freeze):
         for lg in self.layer_opt.layer_groups[:right]:
+            set_lg_train_mode(lg, not bn_freeze)
             for p in self.layer_opt.lg_params(lg):
                 p.requires_grad = False
         for lg in self.layer_opt.layer_groups[right:]:
+            set_lg_train_mode(lg, True)
             for p in self.layer_opt.lg_params(lg):
                 p.requires_grad = True
 
     def unfreeze(self):
         for lg in self.layer_opt.layer_groups:
+            set_lg_train_mode(lg, True)
             for p in self.layer_opt.lg_params(lg):
                 p.requires_grad = True
 

@@ -1,9 +1,10 @@
 from .imps import *
 
 class LayerOptimizer:
-    def __init__(self, layer_groups, opt_fn):
+    def __init__(self, model):
+        layer_groups = model.get_layer_groups()
         param_group = [{'params': self.trainable_lg_params(lg)} for lg in layer_groups]
-        self.opt = opt_fn(param_group)
+        self.opt = torch.optim.SGD(param_group,lr=0,momentum=0.9)
         self.layer_groups = layer_groups
     
     def set_lrs(self, lrs):
@@ -20,16 +21,12 @@ class LayerOptimizer:
         return [p for p in m.parameters() if p.requires_grad]
     
     def trainable_lg_params(self, lg):
-        """lg: layer_group, a pytorch module or list of pytorch module
+        """lg: layer_group, list of pytorch module
         """
-        if isinstance(lg, (list, tuple)):
-            return chain(*[self.trainable_params(l) for l in lg])
-        return self.trainable_params(lg)
+        return chain(*[self.trainable_params(l) for l in lg])
     
     def lg_params(self, lg):
-        """lg: layer_group, a pytorch module or list of pytorch module
+        """lg: layer_group, list of pytorch module
         """
-        if isinstance(lg, (list, tuple)):
-            return chain(*[m.parameters() for m in lg])
-        return lg.parameters()
+        return chain(*[m.parameters() for m in lg])
     

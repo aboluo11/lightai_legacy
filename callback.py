@@ -5,6 +5,7 @@ class CallBack:
     def on_batch_begin(self): pass
     def on_batch_end(self,loss): pass
     def on_epoch_end(self,trn_loss,vals): pass
+    def on_train_end(self): pass
 
 class Recorder(CallBack):
     def __init__(self, layer_opt):
@@ -112,3 +113,7 @@ class SaveBestModel(CallBack):
         if not self.best_metric or metric > self.best_metric:
             self.best_metric = metric
             self.learner.save(self.path)
+
+    def on_train_end(self):
+        best = -self.best_metric if self.small_better else self.best_metric
+        print(f'best metric: {best:.6f}')
