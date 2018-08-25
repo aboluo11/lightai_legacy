@@ -11,7 +11,7 @@ class Learner:
         self.recorder = Recorder(self.layer_opt)
         self.callbacks = [self.recorder, SaveBestModel(self, small_better)]
 
-    def fit(self, n_epochs, lrs, wds=None, clr_params=None, callbacks=None):
+    def fit(self, n_epochs, lrs, wds=None, clr_params=None, callbacks=None, print_stats=True):
         if callbacks is None:
             if clr_params is not None:
                 v_ratio,h_ratio,tl_v_pct,tl_h_pct = clr_params
@@ -27,9 +27,9 @@ class Learner:
         names = ["epoch", "trn_loss"] + (["val_loss"] if self.val_dl else []) +\
          ([self.metric.__name__.lower()] if self.metric else [])
         layout = "{:^11}" * len(names)
-        for epoch in tnrange(n_epochs, desc='Epoch'):
+        for epoch in tnrange(n_epochs, desc='Epoch', ncols=125, ascii=True):
             self.train()
-            t = tqdm(self.trn_dl, leave=False, total=len(self.trn_dl), ncols=125)
+            t = tqdm(self.trn_dl, leave=False, total=len(self.trn_dl), ncols=125, ascii=True)
             try:
                 for (*x,y) in t:
                     *x,y = [T(each) for each in (*x,y)]
@@ -49,9 +49,10 @@ class Learner:
             if self.val_dl: val_res = self.eval()
             else: val_res = None
             for cb in callbacks: cb.on_epoch_end(debias_loss, val_res)
-
-            if epoch == 0: print(layout.format(*names))
-            self.print_stats(epoch+1, [debias_loss] + (val_res if val_res else []))
+            
+            if print_stats:
+                if epoch == 0: print(layout.format(*names))
+                self.print_stats(epoch+1, [debias_loss] + (val_res if val_res else []))
         for cb in callbacks: cb.on_train_end()
 
     def eval(self):
