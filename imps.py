@@ -20,10 +20,17 @@ from PIL import Image
 import torch.utils.model_zoo as model_zoo
 from torchvision import transforms
 
+from ipykernel.kernelapp import IPKernelApp
+def in_notebook(): return IPKernelApp.initialized()
+
 import tqdm as tq
 from tqdm import tnrange
 
 def tqdm(*args, **kwargs):
     return tq.tqdm(*args, file=sys.stdout, **kwargs)
+
+if not in_notebook():
+    from tqdm import trange
+    tnrange = trange
 
 from .functional import *
