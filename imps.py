@@ -18,7 +18,6 @@ import cv2
 from shutil import copyfile
 from PIL import Image
 import torch.utils.model_zoo as model_zoo
-from torchvision import transforms
 
 from ipykernel.kernelapp import IPKernelApp
 def in_notebook(): return IPKernelApp.initialized()
