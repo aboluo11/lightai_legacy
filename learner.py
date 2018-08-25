@@ -11,7 +11,7 @@ class Learner:
         self.recorder = Recorder(self.layer_opt)
         self.callbacks = [self.recorder, SaveBestModel(self, small_better)]
 
-    def fit(self, n_epochs, lrs, wds=None, clr_params=None, callbacks=None, print_stats=True, tta_tsfms=None):
+    def fit(self, n_epochs, lrs, wds=None, clr_params=None, callbacks=None, print_stats=True):
         if callbacks is None:
             if clr_params is not None:
                 v_ratio,h_ratio,tl_v_pct,tl_h_pct = clr_params
@@ -31,7 +31,7 @@ class Learner:
             self.train()
             t = tqdm(self.trn_dl, leave=False, total=len(self.trn_dl), ncols=125, ascii=True)
             try:
-                for (*x,y) in t:
+                for [*x,y] in t:
                     *x,y = [T(each) for each in (*x,y)]
                     for cb in callbacks: cb.on_batch_begin()
                     batch_num += 1
@@ -46,7 +46,7 @@ class Learner:
             finally:
                 t.leave = True
                 t.close()
-            if self.val_dl: val_res = self.eval(tta_tsfms)
+            if self.val_dl: val_res = self.eval()
             else: val_res = None
             for cb in callbacks: cb.on_epoch_end(debias_loss, val_res)
             
@@ -55,25 +55,19 @@ class Learner:
                 self.print_stats(epoch+1, [debias_loss] + (val_res if val_res else []))
         for cb in callbacks: cb.on_train_end()
 
-    def eval(self, tta_tsfms):
-        """tta_tsfms: None or list"""
-        if not tta_tsfms: tta_tsfms = []
-        no_tsfm = lambda x: x
-        tta_tsfms.append(no_tsfm)
-
+    def eval(self):
         losses,bses = [],[]
         metric = self.metric() if self.metric else None
         self.model.eval()
         with torch.no_grad():
-            for (*x,y) in self.val_dl:
+            for batch in self.val_dl:
                 predicts = []
-                for t in tta_tsfms:
-                    x = t(x)
+                for [*x, y] in batch:
                     *x,y = [T(each) for each in (*x,y)]
                     y = y.view(-1)
-                    predict = self.model(*x).view(-1)
+                    predict = self.model(*x)
                     predicts.append(predict)
-                predict = torch.stack(predicts).mean(dim=0)
+                predict = torch.stack(predicts).mean(dim=0).view(-1)
                 loss = self.crit(predict, y)
                 losses.append(loss.item())
                 bses.append(len(y))

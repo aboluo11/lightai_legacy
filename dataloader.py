@@ -2,10 +2,9 @@ from .imps import *
 from .sampler import *
 
 class DataLoader:
-    def __init__(self,sampler, batch_tsfm=None):
+    def __init__(self,sampler):
         self.sampler = sampler
         self.dataset = sampler.dataset
-        self.batch_tsfm = batch_tsfm
 
     def collate(self, batch):
         elem_type = type(batch[0])
@@ -23,8 +22,6 @@ class DataLoader:
             sample = self.dataset[idx]
             batch.append(sample)
         batch = self.collate(batch)
-        if self.batch_tsfm:
-            batch = self.batch_tsfm(batch)
         return batch
     
     def __iter__(self):
