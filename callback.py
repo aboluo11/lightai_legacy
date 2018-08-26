@@ -99,8 +99,8 @@ class ConstantLR(Scheduler):
         self.layer_opt.set_lrs(self.lrs)
     
 class SaveBestModel(CallBack):
-    def __init__(self, learner, small_better, path='model'):
-        self.path = Path(f'{path}/best')
+    def __init__(self, learner, small_better, path='model/best'):
+        self.path = Path(path)
         self.best_metric = None
         self.learner = learner
         self.small_better = small_better

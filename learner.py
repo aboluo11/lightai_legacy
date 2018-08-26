@@ -3,13 +3,12 @@ from .callback import *
 from .layer_optimizer import *
 
 class Learner:
-    def __init__(self, trn_dl, val_dl, model, crit,layer_opt, metric=None, small_better=True,path='./model'):
+    def __init__(self, trn_dl, val_dl, model, crit,layer_opt, metric=None, small_better=True,
+                 sv_best_path='./model/best'):
         self.trn_dl,self.val_dl,self.model,self.crit,self.metric = trn_dl,val_dl,model,crit,metric
-        self.model_path = Path(path)
-        self.model_path.mkdir(exist_ok=True)
         self.layer_opt = layer_opt
         self.recorder = Recorder(self.layer_opt)
-        self.callbacks = [self.recorder, SaveBestModel(self, small_better)]
+        self.callbacks = [self.recorder, SaveBestModel(self, small_better, path=sv_best_path)]
 
     def fit(self, n_epochs, lrs, wds=None, clr_params=None, callbacks=None, print_stats=True):
         if callbacks is None:
@@ -29,7 +28,7 @@ class Learner:
         layout = "{:^11}" * len(names)
         for epoch in tnrange(n_epochs, desc='Epoch', ascii=True):
             self.train()
-            t = tqdm(self.trn_dl, leave=False, total=len(self.trn_dl), ncols=125, ascii=True)
+            t = tqdm(self.trn_dl, leave=False, total=len(self.trn_dl), ascii=True)
             try:
                 for [*x,y] in t:
                     *x,y = [T(each) for each in (*x,y)]
@@ -60,14 +59,9 @@ class Learner:
         metric = self.metric() if self.metric else None
         self.model.eval()
         with torch.no_grad():
-            for batch in self.val_dl:
-                predicts = []
-                for [*x, y] in batch:
-                    *x,y = [T(each) for each in (*x,y)]
-                    y = y.view(-1)
-                    predict = self.model(*x)
-                    predicts.append(predict)
-                predict = torch.stack(predicts).mean(dim=0).view(-1)
+            for *x, y in self.val_dl:
+                *x,y = [T(each) for each in (*x,y)]
+                predict = self.model(*x).squeeze()
                 loss = self.crit(predict, y)
                 losses.append(loss.item())
                 bses.append(len(y))
@@ -93,13 +87,13 @@ class Learner:
     def lr_find(self, start_lrs=None, end_lrs=None, wds=None, n_epochs=1):
         if start_lrs is None: start_lrs = [1e-5]
         if end_lrs is None: end_lrs = [20]
-        self.save(self.model_path/'tmp')
+        self.save('model/tmp')
         recorder = Recorder(self.layer_opt)
         lr_finder = LR_Finder(
             start_lrs,end_lrs,wds,nb=n_epochs*len(self.trn_dl),layer_opt=self.layer_opt)
         self.fit(n_epochs,lrs=start_lrs,wds=wds,callbacks=[recorder,lr_finder])
         recorder.plot_lr_loss()
-        self.load(self.model_path/'tmp')
+        self.load('model/tmp')
 
     def train(self):
         def f(m):
