@@ -1,4 +1,5 @@
 from IPython.core.debugger import set_trace
+import types
 import numpy as np
 from numpy.random import rand
 import pandas as pd
