@@ -28,7 +28,7 @@ class Learner:
         layout = "{:^11}" * len(names)
         for epoch in tnrange(n_epochs, desc='Epoch', ascii=True):
             self.train()
-            t = tqdm(self.trn_dl, leave=False, total=len(self.trn_dl), ascii=True)
+            t = tqdm(self.trn_dl, leave=False, ascii=True)
             try:
                 for [*x,y] in t:
                     *x,y = [T(each) for each in (*x,y)]
