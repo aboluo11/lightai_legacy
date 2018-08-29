@@ -1,10 +1,10 @@
 from .imps import *
 
 class LayerOptimizer:
-    def __init__(self, model):
+    def __init__(self, model, opt_fn=torch.optim.SGD, **opt_args):
         layer_groups = model.get_layer_groups()
         param_group = [{'params': self.trainable_lg_params(lg)} for lg in layer_groups]
-        self.opt = torch.optim.SGD(param_group,lr=0,momentum=0.9)
+        self.opt = opt_fn(param_group, lr=0, **opt_args)
         self.layer_groups = layer_groups
     
     def set_lrs(self, lrs):
