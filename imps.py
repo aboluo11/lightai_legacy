@@ -16,7 +16,6 @@ from itertools import chain
 import collections
 import re
 import cv2
-from shutil import copyfile
 from PIL import Image
 import torch.utils.model_zoo as model_zoo
 
