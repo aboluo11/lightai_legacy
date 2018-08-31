@@ -30,11 +30,11 @@ class Learner:
             self.train()
             t = tqdm(self.trn_dl, leave=False, ascii=True, ncols=125)
             try:
-                for [*x,y] in t:
-                    *x,y = [T(each) for each in (*x,y)]
+                for [x, target] in t:
+                    x, target = T(x), T(target)
                     for cb in callbacks: cb.on_batch_begin()
                     batch_num += 1
-                    loss = self.step(y,*x)
+                    loss = self.step(x, target)
                     avg_loss = avg_loss * avg_mom + loss * (1-avg_mom)
                     debias_loss = avg_loss / (1 - avg_mom**batch_num)
                     t.set_postfix(loss=debias_loss)
@@ -59,23 +59,22 @@ class Learner:
         metric = self.metric() if self.metric else None
         self.model.eval()
         with torch.no_grad():
-            for *x, y in self.val_dl:
-                *x,y = [T(each) for each in (*x,y)]
-                predict = self.model(*x).squeeze()
-                loss = self.crit(predict, y)
+            for x, target in self.val_dl:
+                x, target = T(x), T(target)
+                predict = self.model(x)
+                loss = self.crit(predict, target)
                 losses.append(loss.item())
-                bses.append(len(y))
+                bses.append(len(target))
                 if metric:
-                    metric(predict, y)
+                    metric(predict, target)
         loss = np.average(losses,weights=bses)
         if metric: return [loss,metric.res()]
         else: return [loss]
 
-    def step(self, y, *x):
-        predict = self.model(*x).view(-1)
-        y = y.view(-1)
+    def step(self, x, target):
+        predict = self.model(x)
         self.layer_opt.opt.zero_grad()
-        loss = self.crit(predict, y)
+        loss = self.crit(predict, target)
         loss.backward()
         self.layer_opt.opt.step()
         return loss.item()
