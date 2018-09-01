@@ -110,7 +110,7 @@ class SaveBestModel(CallBack):
         metric = vals[-1]
         if self.small_better:
             metric = -metric
-        if not self.best_metric or metric > self.best_metric:
+        if not self.best_metric or metric >= self.best_metric:
             self.best_metric = metric
             self.learner.save(self.path)
 
