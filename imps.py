@@ -18,6 +18,7 @@ import re
 import cv2
 from PIL import Image
 import torch.utils.model_zoo as model_zoo
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 from ipykernel.kernelapp import IPKernelApp
 def in_notebook(): return IPKernelApp.initialized()

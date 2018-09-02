@@ -2,9 +2,10 @@ from .imps import *
 from .sampler import *
 
 class DataLoader:
-    def __init__(self,sampler):
+    def __init__(self, sampler, n_worker=0):
         self.sampler = sampler
         self.dataset = sampler.dataset
+        self.n_worker = n_worker
 
     def collate(self, batch):
         elem_type = type(batch[0])
@@ -25,8 +26,13 @@ class DataLoader:
         return batch
     
     def __iter__(self):
-        for batch in map(self.get_batch, iter(self.sampler)):
-            yield batch
-        
+        if self.n_worker == 0:
+            for batch in map(self.get_batch, iter(self.sampler)):
+                yield batch
+        else:
+            with ThreadPoolExecutor(max_workers=self.n_worker) as e:
+                for batch in e.map(self.get_batch, iter(self.sampler)):
+                    yield batch
+
     def __len__(self):
         return len(self.sampler)
