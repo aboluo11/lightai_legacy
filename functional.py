@@ -40,5 +40,3 @@ def split_idx(idx_len, percentage, seed):
     train, valid = idx[:int(idx_len*percentage)], idx[int(idx_len*percentage):]
     return train, valid
 
-def set_lg_train_mode(lg, train):
-    for m in lg: m.train_mode = train

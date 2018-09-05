@@ -128,3 +128,7 @@ class Learner:
         checkpoint = torch.load(path)
         self.model.load_state_dict(checkpoint['state_dict'])
         self.layer_opt.opt.load_state_dict(checkpoint['optimizer'])
+
+
+def set_lg_train_mode(lg, train):
+    for m in lg: m.train_mode = train
