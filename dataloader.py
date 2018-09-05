@@ -1,6 +1,7 @@
 from .imps import *
 from .sampler import *
 
+
 class DataLoader:
     def __init__(self, sampler, n_worker=0):
         self.sampler = sampler
@@ -16,7 +17,7 @@ class DataLoader:
         elif isinstance(batch[0], collections.Sequence):
             batch = [self.collate(b) for b in zip(*batch)]
         return batch
-    
+
     def get_batch(self, idxs):
         batch = []
         for idx in idxs:
@@ -24,7 +25,7 @@ class DataLoader:
             batch.append(sample)
         batch = self.collate(batch)
         return batch
-    
+
     def __iter__(self):
         if self.n_worker == 0:
             for batch in map(self.get_batch, iter(self.sampler)):

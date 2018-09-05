@@ -2,10 +2,11 @@ from .imps import *
 from .callback import *
 from .layer_optimizer import *
 
+
 class Learner:
-    def __init__(self, trn_dl, val_dl, model, crit,layer_opt, metric=None, small_better=True,
+    def __init__(self, trn_dl, val_dl, model, crit, layer_opt, metric=None, small_better=True,
                  sv_best_path='./model/best'):
-        self.trn_dl,self.val_dl,self.model,self.crit,self.metric = trn_dl,val_dl,model,crit,metric
+        self.trn_dl, self.val_dl, self.model, self.crit, self.metric = trn_dl, val_dl, model, crit, metric
         self.layer_opt = layer_opt
         self.recorder = Recorder(self.layer_opt)
         self.callbacks = [self.recorder, SaveBestModel(self, small_better, path=sv_best_path)]
@@ -13,18 +14,18 @@ class Learner:
     def fit(self, n_epochs, lrs, wds=None, clr_params=None, callbacks=None, print_stats=True):
         if callbacks is None:
             if clr_params is not None:
-                v_ratio,h_ratio,tl_v_pct,tl_h_pct = clr_params
-                sched = CircularLR(self.layer_opt,lrs,wds,v_ratio,h_ratio,len(self.trn_dl)*n_epochs,
-                tl_v_pct=tl_v_pct,tl_h_pct=tl_h_pct)
+                v_ratio, h_ratio, tl_v_pct, tl_h_pct = clr_params
+                sched = CircularLR(self.layer_opt, lrs, wds, v_ratio, h_ratio, len(self.trn_dl) * n_epochs,
+                                   tl_v_pct=tl_v_pct, tl_h_pct=tl_h_pct)
             else:
-                sched = ConstantLR(lrs,wds,self.layer_opt)
+                sched = ConstantLR(lrs, wds, self.layer_opt)
             callbacks = self.callbacks + [sched]
 
         for cb in callbacks: cb.on_train_begin()
 
-        avg_mom,avg_loss,batch_num = 0.98,0,0
-        names = ["epoch", "trn_loss"] + (["val_loss"] if self.val_dl else []) +\
-         ([self.metric.__name__.lower()] if self.metric else [])
+        avg_mom, avg_loss, batch_num = 0.98, 0, 0
+        names = ["epoch", "trn_loss"] + (["val_loss"] if self.val_dl else []) + \
+                ([self.metric.__name__.lower()] if self.metric else [])
         layout = "{:^11}" * len(names)
         for epoch in tnrange(n_epochs, desc='Epoch', ascii=True):
             self.train()
@@ -35,8 +36,8 @@ class Learner:
                     for cb in callbacks: cb.on_batch_begin()
                     batch_num += 1
                     loss = self.step(x, target)
-                    avg_loss = avg_loss * avg_mom + loss * (1-avg_mom)
-                    debias_loss = avg_loss / (1 - avg_mom**batch_num)
+                    avg_loss = avg_loss * avg_mom + loss * (1 - avg_mom)
+                    debias_loss = avg_loss / (1 - avg_mom ** batch_num)
                     t.set_postfix(loss=debias_loss)
                     stop = False
                     for cb in callbacks:
@@ -45,17 +46,19 @@ class Learner:
             finally:
                 t.leave = True
                 t.close()
-            if self.val_dl: val_res = self.eval()
-            else: val_res = None
+            if self.val_dl:
+                val_res = self.eval()
+            else:
+                val_res = None
             for cb in callbacks: cb.on_epoch_end(debias_loss, val_res)
-            
+
             if print_stats:
                 if epoch == 0: print(layout.format(*names))
-                self.print_stats(epoch+1, [debias_loss] + (val_res if val_res else []))
+                self.print_stats(epoch + 1, [debias_loss] + (val_res if val_res else []))
         for cb in callbacks: cb.on_train_end()
 
     def eval(self):
-        losses,bses = [],[]
+        losses, bses = [], []
         metric = self.metric() if self.metric else None
         self.model.eval()
         with torch.no_grad():
@@ -67,9 +70,11 @@ class Learner:
                 bses.append(len(target))
                 if metric:
                     metric(predict, target)
-        loss = np.average(losses,weights=bses)
-        if metric: return [loss,metric.res()]
-        else: return [loss]
+        loss = np.average(losses, weights=bses)
+        if metric:
+            return [loss, metric.res()]
+        else:
+            return [loss]
 
     def step(self, x, target):
         predict = self.model(x)
@@ -88,9 +93,9 @@ class Learner:
         if end_lrs is None: end_lrs = [20]
         self.save('model/tmp')
         recorder = Recorder(self.layer_opt)
-        lr_finder = LR_Finder(
-            start_lrs,end_lrs,wds,nb=n_epochs*len(self.trn_dl),layer_opt=self.layer_opt)
-        self.fit(n_epochs,lrs=start_lrs,wds=wds,callbacks=[recorder,lr_finder])
+        lr_finder = LRFinder(
+            start_lrs, end_lrs, wds, nb=n_epochs * len(self.trn_dl), layer_opt=self.layer_opt)
+        self.fit(n_epochs, lrs=start_lrs, wds=wds, callbacks=[recorder, lr_finder])
         recorder.plot_lr_loss()
         self.load('model/tmp')
 
@@ -98,7 +103,9 @@ class Learner:
         def f(m):
             if getattr(m, 'train_mode', True):
                 m.train()
-            else: m.eval()
+            else:
+                m.eval()
+
         for lg in self.layer_opt.layer_groups:
             for m in lg: f(m)
 
@@ -121,7 +128,7 @@ class Learner:
     def save(self, path):
         torch.save({
             'state_dict': self.model.state_dict(),
-            'optimizer' : self.layer_opt.opt.state_dict(),
+            'optimizer': self.layer_opt.opt.state_dict(),
         }, path)
 
     def load(self, path):
