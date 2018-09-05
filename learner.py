@@ -127,13 +127,13 @@ class Learner:
 
     def save(self, path):
         torch.save({
-            'state_dict': self.model.state_dict(),
+            'model': self.model.state_dict(),
             'optimizer': self.layer_opt.opt.state_dict(),
         }, path)
 
     def load(self, path):
         checkpoint = torch.load(path)
-        self.model.load_state_dict(checkpoint['state_dict'])
+        self.model.load_state_dict(checkpoint['model'])
         self.layer_opt.opt.load_state_dict(checkpoint['optimizer'])
 
 
