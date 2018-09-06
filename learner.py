@@ -21,7 +21,8 @@ class Learner:
                 sched = ConstantLR(lrs, wds, self.layer_opt)
             callbacks = self.callbacks + [sched]
 
-        for cb in callbacks: cb.on_train_begin()
+        for cb in callbacks:
+            cb.on_train_begin()
 
         avg_mom, avg_loss, batch_num = 0.98, 0, 0
         names = ["epoch", "trn_loss"] + (["val_loss"] if self.val_dl else []) + \
@@ -50,12 +51,14 @@ class Learner:
                 val_res = self.eval()
             else:
                 val_res = None
-            for cb in callbacks: cb.on_epoch_end(debias_loss, val_res)
-
+            for cb in callbacks:
+                cb.on_epoch_end(debias_loss, val_res)
             if print_stats:
-                if epoch == 0: print(layout.format(*names))
+                if epoch == 0:
+                    print(layout.format(*names))
                 self.print_stats(epoch + 1, [debias_loss] + (val_res if val_res else []))
-        for cb in callbacks: cb.on_train_end()
+        for cb in callbacks:
+            cb.on_train_end()
 
     def eval(self):
         losses, bses = [], []
@@ -84,13 +87,11 @@ class Learner:
         self.layer_opt.opt.step()
         return loss.item()
 
-    def print_stats(self, epoch, values):
-        layout = "{:^11}" + "{:^11.6f}" * len(values)
-        print(layout.format(epoch, *values))
-
     def lr_find(self, start_lrs=None, end_lrs=None, wds=None, n_epochs=1):
-        if start_lrs is None: start_lrs = [1e-5]
-        if end_lrs is None: end_lrs = [20]
+        if start_lrs is None:
+            start_lrs = [1e-5]
+        if end_lrs is None:
+            end_lrs = [20]
         self.save('model/tmp')
         recorder = Recorder(self.layer_opt)
         lr_finder = LRFinder(
@@ -107,7 +108,8 @@ class Learner:
                 m.eval()
 
         for lg in self.layer_opt.layer_groups:
-            for m in lg: f(m)
+            for m in lg:
+                f(m)
 
     def freeze_to(self, right, bn_freeze):
         for lg in self.layer_opt.layer_groups[:right]:
@@ -136,6 +138,11 @@ class Learner:
         self.model.load_state_dict(checkpoint['model'])
         self.layer_opt.opt.load_state_dict(checkpoint['optimizer'])
 
+    def print_stats(self, epoch, values):
+        layout = "{:^11}" + "{:^11.6f}" * len(values)
+        print(layout.format(epoch, *values))
+
 
 def set_lg_train_mode(lg, train):
-    for m in lg: m.train_mode = train
+    for m in lg:
+        m.train_mode = train
