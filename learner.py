@@ -34,7 +34,8 @@ class Learner:
             try:
                 for [x, target] in t:
                     x, target = T(x), T(target)
-                    for cb in callbacks: cb.on_batch_begin()
+                    for cb in callbacks:
+                        cb.on_batch_begin()
                     batch_num += 1
                     loss = self.step(x, target)
                     avg_loss = avg_loss * avg_mom + loss * (1 - avg_mom)
