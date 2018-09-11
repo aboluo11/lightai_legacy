@@ -40,7 +40,6 @@ class Learner:
                     loss = self.step(x, target)
                     avg_loss = avg_loss * avg_mom + loss * (1 - avg_mom)
                     debias_loss = avg_loss / (1 - avg_mom ** batch_num)
-                    t.set_postfix(loss=debias_loss)
                     stop = False
                     for cb in callbacks:
                         stop = stop or cb.on_batch_end(debias_loss)
