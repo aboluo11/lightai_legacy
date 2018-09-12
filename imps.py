@@ -20,9 +20,7 @@ import cv2
 from PIL import Image
 import torch.utils.model_zoo as model_zoo
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from tqdm import tnrange, trange, tqdm, tqdm_notebook
-
-# from ipykernel.kernelapp import IPKernelApp
+from tqdm import tnrange, trange, tqdm
 
 
 from .functional import *

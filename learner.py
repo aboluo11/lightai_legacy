@@ -5,13 +5,12 @@ from .layer_optimizer import *
 
 class Learner:
     def __init__(self, trn_dl, val_dl, model, crit, layer_opt, metric=None, small_better=True,
-                 sv_best_path='./model/best', in_notebook=True):
+                 sv_best_path='./model/best'):
         self.trn_dl, self.val_dl, self.model, self.crit, self.metric = trn_dl, val_dl, model, crit, metric
         self.layer_opt = layer_opt
         self.recorder = Recorder(self.layer_opt)
         self.sv_best_model = SaveBestModel(self, small_better, path=sv_best_path)
         self.callbacks = [self.recorder, self.sv_best_model]
-        self.tnrange = tnrange if in_notebook else trange
 
     def fit(self, phases, mode, ratio=None, wd=None, wd_ratio=None, print_stats=True):
         if not ratio:
@@ -38,7 +37,7 @@ class Learner:
         names = ["epoch", "trn_loss"] + (["val_loss"] if self.val_dl else []) + \
                 ([self.metric.__name__.lower()] if self.metric else [])
         layout = "{:^11}" * len(names)
-        for epoch in tqdm_notebook(n_epochs, desc='Epoch', ascii=True, ncols=125, file=sys.stdout):
+        for epoch in tnrange(n_epochs, desc='epoch'):
             self.train()
             t = tqdm(self.trn_dl, leave=False, ascii=True, ncols=125, file=sys.stdout)
             try:
