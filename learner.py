@@ -29,8 +29,8 @@ class Learner:
             callbacks = self.callbacks + [sched]
         elif mode == 'lr_find':
             sched = LRFinder(phases, ratio, wd, wd_ratio, self.layer_opt)
-            recorder = Recorder(self.layer_opt)
-            callbacks = [sched, recorder]
+            self.recorder = Recorder(self.layer_opt)
+            callbacks = [sched, self.recorder]
         for cb in callbacks:
             cb.on_train_begin()
         avg_mom, avg_loss, batch_num = 0.98, 0, 0
@@ -52,7 +52,8 @@ class Learner:
                     stop = False
                     for cb in callbacks:
                         stop = stop or cb.on_batch_end(debias_loss)
-                    if stop: return
+                    if stop:
+                        return
             finally:
                 t.leave = True
                 t.close()
@@ -68,8 +69,6 @@ class Learner:
                 self.print_stats(epoch + 1, [debias_loss] + (val_res if val_res else []))
         for cb in callbacks:
             cb.on_train_end()
-        if mode == 'lr_find':
-            return recorder
 
     def eval(self):
         losses, bses = [], []
@@ -101,8 +100,10 @@ class Learner:
     def lr_find(self, start_lr=1e-5, end_lr=20, ratio=None, wd=None, wd_ratio=None, n_epochs=1):
         self.save('model/tmp')
         phases = [np.geomspace(start_lr, end_lr, num=n_epochs*len(self.trn_dl), endpoint=True)]
-        recorder = self.fit(phases, mode='lr_find', ratio=ratio, wd=wd, wd_ratio=wd_ratio)
-        recorder.plot_lr_loss()
+        saved_recorder = self.recorder
+        self.fit(phases, mode='lr_find', ratio=ratio, wd=wd, wd_ratio=wd_ratio)
+        self.recorder.plot_lr_loss()
+        self.recorder = saved_recorder
         self.load('model/tmp')
 
     def train(self):
