@@ -9,25 +9,29 @@ class Learner:
         self.trn_dl, self.val_dl, self.model, self.crit, self.metric = trn_dl, val_dl, model, crit, metric
         self.layer_opt = layer_opt
         self.recorder = Recorder(self.layer_opt)
-        self.callbacks = [self.recorder, SaveBestModel(self, small_better, path=sv_best_path)]
+        self.sv_best_model = SaveBestModel(self, small_better, path=sv_best_path)
+        self.callbacks = [self.recorder, self.sv_best_model]
 
-    def fit(self, n_epochs, lrs, wds=None, clr_params=None, callbacks=None, print_stats=True):
+    def fit(self, phases, cyclic=False, ratio=None, wd=None, wd_ratio=None, callbacks=None, print_stats=True):
+        if not ratio:
+            ratio = [1] * len(self.layer_opt)
+        if not wd_ratio:
+            wd_ratio = [1] * len(self.layer_opt)
+        ratio = np.array(ratio)
+        wd_ratio = np.array(wd_ratio)
         if callbacks is None:
-            if clr_params is not None:
-                v_ratio, h_ratio, tl_v_pct, tl_h_pct = clr_params
-                sched = CircularLR(self.layer_opt, lrs, wds, v_ratio, h_ratio, len(self.trn_dl) * n_epochs,
-                                   tl_v_pct=tl_v_pct, tl_h_pct=tl_h_pct)
+            if cyclic:
+                sched = Cyclic(phases, ratio, wd, wd_ratio, self.layer_opt, self.sv_best_model)
             else:
-                sched = ConstantLR(lrs, wds, self.layer_opt)
+                sched = PhaseLr(phases, ratio, wd, wd_ratio, self.layer_opt)
             callbacks = self.callbacks + [sched]
-
         for cb in callbacks:
             cb.on_train_begin()
-
         avg_mom, avg_loss, batch_num = 0.98, 0, 0
         names = ["epoch", "trn_loss"] + (["val_loss"] if self.val_dl else []) + \
                 ([self.metric.__name__.lower()] if self.metric else [])
         layout = "{:^11}" * len(names)
+        n_epochs = sum([len(phase) for phase in phases]) // len(self.trn_dl)
         for epoch in tnrange(n_epochs, desc='Epoch', ascii=True):
             self.train()
             t = tqdm(self.trn_dl, leave=False, ascii=True, ncols=125)
@@ -87,15 +91,11 @@ class Learner:
         self.layer_opt.opt.step()
         return loss.item()
 
-    def lr_find(self, start_lrs=None, end_lrs=None, wds=None, n_epochs=1):
-        if start_lrs is None:
-            start_lrs = [1e-5]
-        if end_lrs is None:
-            end_lrs = [20]
+    def lr_find(self, start_lr=1e-5, end_lr=20, wds=None, n_epochs=1):
         self.save('model/tmp')
         recorder = Recorder(self.layer_opt)
         lr_finder = LRFinder(
-            start_lrs, end_lrs, wds, nb=n_epochs * len(self.trn_dl), layer_opt=self.layer_opt)
+            start_lr, end_lr, wds, nb=n_epochs * len(self.trn_dl), layer_opt=self.layer_opt)
         self.fit(n_epochs, lrs=start_lrs, wds=wds, callbacks=[recorder, lr_finder])
         recorder.plot_lr_loss()
         self.load('model/tmp')

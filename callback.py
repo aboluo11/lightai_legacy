@@ -51,11 +51,11 @@ class Recorder(CallBack):
 
 
 class Scheduler(CallBack):
-    def __init__(self, layer_opt, wds):
+    def __init__(self, layer_opt, wd, wd_ratio):
         self.iteration = -1
         self.layer_opt = layer_opt
-        if wds is not None:
-            wds = np.array(listify(wds, layer_opt.layer_groups))
+        if wd is not None:
+            wds = ratio_listify(wd, wd_ratio)
             self.layer_opt.set_wds(wds)
 
     def on_batch_begin(self):
@@ -63,17 +63,15 @@ class Scheduler(CallBack):
 
 
 class LRFinder(Scheduler):
-    def __init__(self, start_lrs, end_lrs, wds, nb, layer_opt):
-        self.start_lrs = np.array(listify(start_lrs, layer_opt.layer_groups))
-        end_lrs = np.array(listify(end_lrs, layer_opt.layer_groups))
+    def __init__(self, start_lr, end_lr, ratio, wd, wd_ratio, nb, layer_opt):
+        self.ratio = ratio
         self.best = 1e9
-        self.nb = nb
-        self.lrs = np.geomspace(start_lrs[-1], end_lrs[-1], num=nb, endpoint=True)
-        super().__init__(layer_opt, wds)
+        self.lrs = np.geomspace(start_lr, end_lr, num=nb, endpoint=True)
+        super().__init__(layer_opt, wd, wd_ratio)
 
     def on_batch_begin(self):
         super().on_batch_begin()
-        self.layer_opt.set_lrs(ratio_listify(self.lrs[self.iteration], self.start_lrs))
+        self.layer_opt.set_lrs(ratio_listify(self.lrs[self.iteration], self.ratio))
 
     def on_batch_end(self, loss):
         if loss < self.best:
@@ -83,30 +81,34 @@ class LRFinder(Scheduler):
         return False
 
 
-class CircularLR(Scheduler):
-    def __init__(self, layer_opt, peak_lrs, wds, v_ratio, h_ratio, nb, tl_v_pct, tl_h_pct):
-        self.peak_lrs = np.array(listify(peak_lrs, layer_opt.layer_groups))
-        bottom = self.peak_lrs[-1] / v_ratio
-        l = int(nb * (1 - tl_h_pct))
-        ll = int(l / h_ratio)
-        one = np.linspace(bottom, self.peak_lrs[-1], num=ll, endpoint=False)
-        two = np.linspace(self.peak_lrs[-1], bottom, num=l - ll, endpoint=False)
-        three = np.linspace(bottom, bottom * tl_v_pct, num=nb - l, endpoint=True)
-        self.lrs = np.concatenate([one, two, three])
-        super().__init__(layer_opt, wds)
+class PhaseLr(Scheduler):
+    def __init__(self, phases, ratio, wd, wd_ratio, layer_opt):
+        self.lrs = np.concatenate(phases)
+        self.ratio = ratio
+        super().__init__(layer_opt, wd, wd_ratio)
 
     def on_batch_begin(self):
         super().on_batch_begin()
-        self.layer_opt.set_lrs(ratio_listify(self.lrs[self.iteration], self.peak_lrs))
+        self.layer_opt.set_lrs(ratio_listify(self.lrs[self.iteration], self.ratio))
 
+class Cyclic(Scheduler):
+    def __init__(self, phases, ratio, wd, wd_ratio, layer_opt, sv_best_model):
+        self.phases = phases
+        self.ratio = ratio
+        self.cur_phase = 0
+        self.sv_best_model = sv_best_model
+        sv_best_model.path.mkdir(exist_ok=True)
+        sv_best_model.path = sv_best_model.path/f'phase{self.cur_phase}'
+        super().__init__(layer_opt, wd, wd_ratio)
 
-class ConstantLR(Scheduler):
-    def __init__(self, lrs, wds, layer_opt):
-        self.lrs = np.array(listify(lrs, layer_opt.layer_groups))
-        super().__init__(layer_opt, wds)
-
-    def on_train_begin(self):
-        self.layer_opt.set_lrs(self.lrs)
+    def on_batch_begin(self):
+        super().on_batch_begin()
+        if self.iteration == len(self.phases[self.cur_phase]):
+            self.cur_phase += 1
+            self.iteration = 0
+            self.sv_best_model.path = self.sv_best_model.path.parent/f'phase{self.cur_phase}'
+            self.sv_best_model.best_metric = None
+        self.layer_opt.set_lrs(ratio_listify(self.phases[self.cur_phase][self.iteration], self.ratio))
 
 
 class SaveBestModel(CallBack):

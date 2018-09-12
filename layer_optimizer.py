@@ -29,4 +29,7 @@ class LayerOptimizer:
         """lg: layer_group, list of pytorch module
         """
         return chain(*[m.parameters() for m in lg])
+
+    def __len__(self):
+        return len(self.layer_groups)
     

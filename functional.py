@@ -13,20 +13,18 @@ def T(x, cuda=True):
     return x
 
 def listify(x, y):
-    if not isinstance(x, collections.Iterable):
-        x = [x]
-    n = len(y)
-    if len(x) == 1: x = x * n
-    return x
+    """
+    :param x: scalar
+    :param y: iterable
+    """
+    return [x] * len(y)
 
-def ratio_listify(x, y):
+def ratio_listify(x, ratio):
     """
     x: scalar
-    y: np.array
+    ratio: np.array
     """
-    ratio = y[-1]/x
-    x = y/ratio
-    return x
+    return x * ratio
     
 def children(m):
     return list(m.children())
