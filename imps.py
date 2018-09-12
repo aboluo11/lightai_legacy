@@ -20,18 +20,9 @@ import cv2
 from PIL import Image
 import torch.utils.model_zoo as model_zoo
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from tqdm import tnrange, trange, tqdm
 
-from ipykernel.kernelapp import IPKernelApp
-def in_notebook(): return IPKernelApp.initialized()
+# from ipykernel.kernelapp import IPKernelApp
 
-import tqdm as tq
-from tqdm import tnrange
-
-def tqdm(*args, **kwargs):
-    return tq.tqdm(*args, file=sys.stdout, **kwargs)
-
-if not in_notebook():
-    from tqdm import trange
-    tnrange = trange
 
 from .functional import *
