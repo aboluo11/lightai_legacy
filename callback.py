@@ -63,10 +63,10 @@ class Scheduler(CallBack):
 
 
 class LRFinder(Scheduler):
-    def __init__(self, start_lr, end_lr, ratio, wd, wd_ratio, nb, layer_opt):
+    def __init__(self, phases, ratio, wd, wd_ratio, layer_opt):
         self.ratio = ratio
         self.best = 1e9
-        self.lrs = np.geomspace(start_lr, end_lr, num=nb, endpoint=True)
+        self.lrs = np.concatenate(phases)
         super().__init__(layer_opt, wd, wd_ratio)
 
     def on_batch_begin(self):
