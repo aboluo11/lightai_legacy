@@ -38,7 +38,7 @@ class Learner:
         names = ["epoch", "trn_loss"] + (["val_loss"] if self.val_dl else []) + \
                 ([self.metric.__name__.lower()] if self.metric else [])
         layout = "{:^11}" * len(names)
-        for epoch in self.tnrange(n_epochs, desc='Epoch', ascii=True):
+        for epoch in self.tnrange(n_epochs, desc='Epoch', ascii=True, ncols=125, file=sys.stdout):
             self.train()
             t = tqdm(self.trn_dl, leave=False, ascii=True, ncols=125, file=sys.stdout)
             try:
