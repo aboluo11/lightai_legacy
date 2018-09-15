@@ -21,7 +21,9 @@ class Learner:
         wd_ratio = np.array(wd_ratio)
         n_batches = sum([len(phase) for phase in phases])
         n_epochs = n_batches // len(self.trn_dl)
-        if mode == 'cyclic':
+        if mode is None:
+            callbacks = self.callbacks
+        elif mode == 'cyclic':
             sched = Cyclic(phases, ratio, wd, wd_ratio, self.layer_opt, self.sv_best_model)
             callbacks = self.callbacks + [sched]
         elif mode == 'phase':
