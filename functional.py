@@ -38,13 +38,15 @@ def leaves(model):
         res += leaves(c)
     return res
 
-def grad_mean(layer):
+def weight_grad_mean(layer):
     children = leaves(layer)
-    grad = 0
+    mean_weights = []
+    mean_grads = []
     for each in children:
         if hasattr(each, 'weight'):
-            grad += each.weight.mean().item()
-    return grad/len(children)
+            mean_weights.append(each.weight.mean().item())
+            mean_grads.append(each.weight.grad.mean().item())
+    return np.array(mean_weights).mean(), np.array(mean_grads).mean()
 
 def model_cut(m,right):
     return nn.Sequential(*children(m)[:right])
