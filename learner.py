@@ -12,7 +12,7 @@ class Learner:
         self.sv_best_model = SaveBestModel(self, small_better, path=sv_best_path)
         self.callbacks = [self.recorder, self.sv_best_model]
 
-    def fit(self, phases, mode, ratio=None, wd=None, wd_ratio=None, print_stats=True):
+    def fit(self, phases, mode, ratio=None, wd=None, wd_ratio=None, print_stats=True, addtional_cbs=None):
         if not ratio:
             ratio = [1] * len(self.layer_opt)
         if not wd_ratio:
@@ -34,6 +34,8 @@ class Learner:
             sched = LRFinder(phases, ratio, wd, wd_ratio, self.layer_opt)
             self.recorder = Recorder(self.layer_opt)
             callbacks = [sched, self.recorder]
+        if addtional_cbs:
+            callbacks += addtional_cbs
         for cb in callbacks:
             cb.on_train_begin()
         avg_mom, avg_loss, batch_num = 0.98, 0, 0
@@ -53,7 +55,7 @@ class Learner:
                 debias_loss = avg_loss / (1 - avg_mom ** batch_num)
                 stop = False
                 for cb in callbacks:
-                    stop = stop or cb.on_batch_end(debias_loss)
+                    stop = stop or cb.on_batch_end(debias_loss, self.model)
                 if stop:
                     return
             if self.val_dl:

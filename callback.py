@@ -6,7 +6,7 @@ class CallBack:
 
     def on_batch_begin(self): pass
 
-    def on_batch_end(self, loss): pass
+    def on_batch_end(self, loss, model): pass
 
     def on_epoch_end(self, trn_loss, vals): pass
 
@@ -18,7 +18,7 @@ class Recorder(CallBack):
         self.trn_los, self.trn_los_epoch, self.val_los_epoch, self.lrs = [], [], [], []
         self.layer_opt = layer_opt
 
-    def on_batch_end(self, loss):
+    def on_batch_end(self, loss, model):
         self.lrs.append(self.layer_opt.lrs[-1])
         self.trn_los.append(loss)
 
