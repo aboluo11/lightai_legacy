@@ -43,7 +43,7 @@ def weight_grad_mean(layer):
     mean_weights = []
     mean_grads = []
     for each in children:
-        if hasattr(each, 'weight'):
+        if hasattr(each, 'weight') and each.__class__.__name__[:9] != 'BatchNorm':
             mean_weights.append(each.weight.mean().item())
             mean_grads.append(each.weight.grad.mean().item())
     return np.array(mean_weights).mean(), np.array(mean_grads).mean()
