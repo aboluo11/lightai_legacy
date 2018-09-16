@@ -21,6 +21,7 @@ class Learner:
         wd_ratio = np.array(wd_ratio)
         n_batches = sum([len(phase) for phase in phases])
         n_epochs = n_batches // len(self.trn_dl)
+        print(f'total: {n_epochs} epochs')
         if mode is None:
             callbacks = self.callbacks
         elif mode == 'cyclic':
@@ -37,28 +38,24 @@ class Learner:
             cb.on_train_begin()
         avg_mom, avg_loss, batch_num = 0.98, 0, 0
         names = ["epoch", "trn_loss"] + (["val_loss"] if self.val_dl else []) + \
-                ([self.metric.__name__.lower()] if self.metric else [])
+                ([self.metric.__name__.lower()] if self.metric else []) + ["time"]
         layout = "{:^11}" * len(names)
-        for epoch in tnrange(n_epochs, desc='epoch'):
+        for epoch in range(n_epochs):
+            time1 = time.time()
             self.train()
-            t = tqdm(self.trn_dl, leave=False, ascii=True, ncols=125, file=sys.stdout)
-            try:
-                for [x, target] in t:
-                    x, target = T(x), T(target)
-                    for cb in callbacks:
-                        cb.on_batch_begin()
-                    batch_num += 1
-                    loss = self.step(x, target)
-                    avg_loss = avg_loss * avg_mom + loss * (1 - avg_mom)
-                    debias_loss = avg_loss / (1 - avg_mom ** batch_num)
-                    stop = False
-                    for cb in callbacks:
-                        stop = stop or cb.on_batch_end(debias_loss)
-                    if stop:
-                        return
-            finally:
-                t.leave = True
-                t.close()
+            for [x, target] in self.trn_dl:
+                x, target = T(x), T(target)
+                for cb in callbacks:
+                    cb.on_batch_begin()
+                batch_num += 1
+                loss = self.step(x, target)
+                avg_loss = avg_loss * avg_mom + loss * (1 - avg_mom)
+                debias_loss = avg_loss / (1 - avg_mom ** batch_num)
+                stop = False
+                for cb in callbacks:
+                    stop = stop or cb.on_batch_end(debias_loss)
+                if stop:
+                    return
             if self.val_dl:
                 val_res = self.eval()
             else:
@@ -68,7 +65,7 @@ class Learner:
             if print_stats:
                 if epoch == 0:
                     print(layout.format(*names))
-                self.print_stats(epoch + 1, [debias_loss] + (val_res if val_res else []))
+                self.print_stats(epoch + 1, debias_loss, *(val_res if val_res else []), time.time()-time1)
         for cb in callbacks:
             cb.on_train_end()
 
@@ -146,9 +143,9 @@ class Learner:
         self.model.load_state_dict(checkpoint['model'])
         self.layer_opt.opt.load_state_dict(checkpoint['optimizer'])
 
-    def print_stats(self, epoch, values):
-        layout = "{:^11}" + "{:^11.6f}" * len(values)
-        print(layout.format(epoch, *values))
+    def print_stats(self, *values):
+        layout = "{:^11}" + "{:^11.6f}" * (len(values) - 1)
+        print(layout.format(*values))
 
 
 def set_lg_train_mode(lg, train):
