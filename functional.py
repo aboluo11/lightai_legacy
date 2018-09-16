@@ -29,6 +29,23 @@ def ratio_listify(x, ratio):
 def children(m):
     return list(m.children())
 
+def leaves(model):
+    res = []
+    childs = children(model)
+    if len(childs) == 0:
+        return [model]
+    for c in childs:
+        res += leaves(c)
+    return res
+
+def grad_mean(layer):
+    children = leaves(layer)
+    grad = 0
+    for each in children:
+        if hasattr(each, 'weight'):
+            grad += each.weight.mean().item()
+    return grad/len(children)
+
 def model_cut(m,right):
     return nn.Sequential(*children(m)[:right])
 
