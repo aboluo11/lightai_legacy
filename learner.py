@@ -11,6 +11,7 @@ class Learner:
         self.recorder = Recorder(self.layer_opt)
         self.sv_best_model = SaveBestModel(self, small_better, path=sv_best_path)
         self.callbacks = [self.recorder, self.sv_best_model]
+        self.global_step = 0
 
     def fit(self, phases, mode, ratio=None, wd=None, wd_ratio=None, print_stats=True, addtional_cbs=None):
         if not ratio:
@@ -58,6 +59,7 @@ class Learner:
                     stop = stop or cb.on_batch_end(debias_loss, self.model)
                 if stop:
                     return
+                self.global_step += 1
             if self.val_dl:
                 val_res = self.eval()
             else:
@@ -91,7 +93,7 @@ class Learner:
             return [loss]
 
     def step(self, x, target):
-        predict = self.model(x)
+        predict = self.model(x, self.global_step)
         self.layer_opt.opt.zero_grad()
         loss = self.crit(predict, target)
         loss.backward()
