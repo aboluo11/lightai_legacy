@@ -22,6 +22,7 @@ import torch.utils.model_zoo as model_zoo
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from collections import OrderedDict
 import os
+from tensorboardX import SummaryWriter
 
 
 from .functional import *
