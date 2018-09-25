@@ -3,7 +3,7 @@ from .sampler import *
 
 
 class DataLoader:
-    def __init__(self, sampler, n_worker=0):
+    def __init__(self, sampler, n_worker=os.cpu_count()//2):
         self.sampler = sampler
         self.dataset = sampler.dataset
         self.n_worker = n_worker
