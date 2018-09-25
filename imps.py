@@ -23,6 +23,7 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from collections import OrderedDict
 import os
 from tensorboardX import SummaryWriter
+import torchvision
 
 
 from .functional import *
