@@ -73,7 +73,7 @@ class LRFinder(Scheduler):
         super().on_batch_begin()
         self.layer_opt.set_lrs(ratio_listify(self.lrs[self.iteration], self.ratio))
 
-    def on_batch_end(self, loss):
+    def on_batch_end(self, loss, model):
         if loss < self.best:
             self.best = loss
         if loss > 2 * self.best:
