@@ -61,7 +61,7 @@ class Learner:
                 if stop:
                     return
                 self.global_step += 1
-            if self.val_dl:
+            if self.val_dl and mode != 'lr_find':
                 val_res = self.eval()
             else:
                 val_res = None
