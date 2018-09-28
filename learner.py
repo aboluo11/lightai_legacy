@@ -12,6 +12,7 @@ class Learner:
         self.sv_best_model = SaveBestModel(self, small_better, path=sv_best_path)
         self.callbacks = [self.recorder, self.sv_best_model]
         self.global_step = 0
+        self.epoch = 0
 
     def fit(self, phases, mode, ratio=None, wd=None, wd_ratio=None, print_stats=True, addtional_cbs=None):
         if not ratio:
@@ -41,7 +42,7 @@ class Learner:
             cb.on_train_begin()
         avg_mom, avg_loss, batch_num = 0.98, 0, 0
         names = ["epoch", "trn_loss"] + (["val_loss"] if self.val_dl else []) + \
-                ([self.metric.__name__.lower()] if self.metric else []) + ["time"]
+                ([self.metric.__class__.__name__.lower()] if self.metric else []) + ["time"]
         layout = "{:^11}" * len(names)
         for epoch in range(n_epochs):
             time1 = time.time()
@@ -70,12 +71,12 @@ class Learner:
                 if epoch == 0:
                     print(layout.format(*names))
                 self.print_stats(epoch + 1, debias_loss, *(val_res if val_res else []), time.time()-time1)
+            self.epoch += 1
         for cb in callbacks:
             cb.on_train_end()
 
     def eval(self):
         losses, bses = [], []
-        metric = self.metric() if self.metric else None
         self.model.eval()
         with torch.no_grad():
             for x, target in self.val_dl:
@@ -84,11 +85,11 @@ class Learner:
                 loss = self.crit(predict, target)
                 losses.append(loss.item())
                 bses.append(len(target))
-                if metric:
-                    metric(predict, target)
+                if self.metric:
+                    self.metric(predict, target)
         loss = np.average(losses, weights=bses)
-        if metric:
-            return [loss, metric.res()]
+        if self.metric:
+            return [loss, self.metric.res(self.epoch)]
         else:
             return [loss]
 
