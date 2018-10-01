@@ -5,8 +5,7 @@ from .layer_optimizer import *
 
 class Learner:
     def __init__(self, trn_dl, val_dl, model, crit, layer_opt, metric=None, small_better=True,
-                 sv_best_path='./model/best', reverse_ttas=None):
-        self.reverse_ttas = [None] if reverse_ttas == None else reverse_ttas
+                 sv_best_path='./model/best'):
         self.trn_dl, self.val_dl, self.model, self.crit, self.metric = trn_dl, val_dl, model, crit, metric
         self.layer_opt = layer_opt
         self.recorder = Recorder(self.layer_opt)
@@ -91,7 +90,7 @@ class Learner:
                         losses.append(loss.item())
                         bses.append(len(target))
                 if self.metric:
-                    self.metric(predicts, target, self.reverse_ttas)
+                    self.metric(predicts, target)
         loss = np.average(losses, weights=bses)
         if self.metric:
             return [loss, self.metric.res(self.epoch)]
