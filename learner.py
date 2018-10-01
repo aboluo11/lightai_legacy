@@ -5,7 +5,8 @@ from .layer_optimizer import *
 
 class Learner:
     def __init__(self, trn_dl, val_dl, model, crit, layer_opt, metric=None, small_better=True,
-                 sv_best_path='./model/best'):
+                 sv_best_path='./model/best', reverse_ttas=None):
+        self.reverse_ttas = [None] if reverse_ttas == None else reverse_ttas
         self.trn_dl, self.val_dl, self.model, self.crit, self.metric = trn_dl, val_dl, model, crit, metric
         self.layer_opt = layer_opt
         self.recorder = Recorder(self.layer_opt)
@@ -79,14 +80,17 @@ class Learner:
         losses, bses = [], []
         self.model.eval()
         with torch.no_grad():
-            for x, target in self.val_dl:
-                x, target = T(x), T(target)
-                predict = self.model(x)
-                loss = self.crit(predict, target)
-                losses.append(loss.item())
-                bses.append(len(target))
+            for tta_batch in self.val_dl:
+                predicts = []
+                for x, target in tta_batch:
+                    x, target = T(x), T(target)
+                    predict = self.model(x)
+                    predicts.append(predict)
+                    loss = self.crit(predict, target)
+                    losses.append(loss.item())
+                    bses.append(len(target))
                 if self.metric:
-                    self.metric(predict, target)
+                    self.metric(predicts, target, self.reverse_ttas)
         loss = np.average(losses, weights=bses)
         if self.metric:
             return [loss, self.metric.res(self.epoch)]
