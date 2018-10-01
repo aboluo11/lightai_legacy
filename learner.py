@@ -82,13 +82,14 @@ class Learner:
         with torch.no_grad():
             for tta_batch in self.val_dl:
                 predicts = []
-                for x, target in tta_batch:
+                for i, (x, target) in enumerate(tta_batch):
                     x, target = T(x), T(target)
                     predict = self.model(x)
                     predicts.append(predict)
-                    loss = self.crit(predict, target)
-                    losses.append(loss.item())
-                    bses.append(len(target))
+                    if i == 0:
+                        loss = self.crit(predict, target)
+                        losses.append(loss.item())
+                        bses.append(len(target))
                 if self.metric:
                     self.metric(predicts, target, self.reverse_ttas)
         loss = np.average(losses, weights=bses)
