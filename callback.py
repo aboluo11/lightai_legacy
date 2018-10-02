@@ -28,7 +28,7 @@ class Recorder(CallBack):
             losses = {'train_loss': trn_loss}
             if vals:
                 losses['val_loss'] = vals[0]
-            self.writer.add_scalar('loss', losses, n_epoch)
+            self.writer.add_scalars('loss', losses, n_epoch)
 
     def plot_lr(self):
         fig, ax = plt.subplots()
