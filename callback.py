@@ -8,23 +8,27 @@ class CallBack:
 
     def on_batch_end(self, loss, model): pass
 
-    def on_epoch_end(self, trn_loss, vals): pass
+    def on_epoch_end(self, trn_loss, vals, n_epoch): pass
 
     def on_train_end(self): pass
 
 
 class Recorder(CallBack):
-    def __init__(self, layer_opt):
-        self.trn_los, self.trn_los_epoch, self.val_los_epoch, self.lrs = [], [], [], []
+    def __init__(self, layer_opt, writer):
+        self.trn_los, self.lrs = [], []
         self.layer_opt = layer_opt
+        self.writer = writer
 
     def on_batch_end(self, loss, model):
         self.lrs.append(self.layer_opt.lrs[-1])
         self.trn_los.append(loss)
 
-    def on_epoch_end(self, trn_loss, vals):
-        self.trn_los_epoch.append(trn_loss)
-        if vals: self.val_los_epoch.append(vals[0])
+    def on_epoch_end(self, trn_loss, vals, n_epoch):
+        if self.writer:
+            losses = {'train_loss': trn_loss}
+            if vals:
+                losses['val_loss'] = vals[0]
+            self.writer.add_scalar('loss', losses, n_epoch)
 
     def plot_lr(self):
         fig, ax = plt.subplots()
@@ -118,7 +122,7 @@ class SaveBestModel(CallBack):
         self.learner = learner
         self.small_better = small_better
 
-    def on_epoch_end(self, trn_loss, vals):
+    def on_epoch_end(self, trn_loss, vals, n_epoch):
         if not vals: return
         metric = vals[-1]
         if self.small_better:

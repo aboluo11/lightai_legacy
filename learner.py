@@ -5,14 +5,15 @@ from .layer_optimizer import *
 
 class Learner:
     def __init__(self, trn_dl, val_dl, model, crit, layer_opt, metric=None, small_better=True,
-                 sv_best_path='./model/best'):
+                 sv_best_path='./model/best', writer=None):
         self.trn_dl, self.val_dl, self.model, self.crit, self.metric = trn_dl, val_dl, model, crit, metric
         self.layer_opt = layer_opt
-        self.recorder = Recorder(self.layer_opt)
+        self.recorder = Recorder(self.layer_opt, writer)
         self.sv_best_model = SaveBestModel(self, small_better, path=sv_best_path)
         self.callbacks = [self.recorder, self.sv_best_model]
         self.global_step = 0
         self.epoch = 0
+        self.writer = writer
 
     def fit(self, phases, mode, ratio=None, wd=None, wd_ratio=None, print_stats=True, addtional_cbs=None):
         if not ratio:
@@ -34,7 +35,7 @@ class Learner:
             callbacks = self.callbacks + [sched]
         elif mode == 'lr_find':
             sched = LRFinder(phases, ratio, wd, wd_ratio, self.layer_opt)
-            self.recorder = Recorder(self.layer_opt)
+            self.recorder = Recorder(self.layer_opt, None)
             callbacks = [sched, self.recorder]
         if addtional_cbs:
             callbacks += addtional_cbs
@@ -66,7 +67,7 @@ class Learner:
             else:
                 val_res = None
             for cb in callbacks:
-                cb.on_epoch_end(debias_loss, val_res)
+                cb.on_epoch_end(debias_loss, val_res, self.epoch)
             if print_stats:
                 if epoch == 0:
                     print(layout.format(*names))
