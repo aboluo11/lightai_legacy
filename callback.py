@@ -25,9 +25,9 @@ class Recorder(CallBack):
 
     def on_epoch_end(self, trn_loss, vals, n_epoch):
         if self.writer:
-            losses = {'train_loss': trn_loss}
+            losses = {'train': trn_loss}
             if vals:
-                losses['val_loss'] = vals[0]
+                losses['val'] = vals[0]
             self.writer.add_scalars('loss', losses, n_epoch)
 
     def plot_lr(self):
